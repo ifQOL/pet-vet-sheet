@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>症状記録シート</title>
+<style>
+/* ── reset ── */
+*{box-sizing:border-box;margin:0;padding:0;}
+
+/* ── base ── */
+body{font-family:-apple-system,'Hiragino Sans',sans-serif;background:#F7F9F7;color:#1A2E1E;min-height:100vh;padding-bottom:60px;}
+
+/* ── header ── */
+.hdr{background:#2D5A3D;padding:14px 16px 0;position:sticky;top:0;z-index:100;}
+.hdr h1{color:#fff;font-size:17px;font-weight:800;}
+.hdr p{color:rgba(255,255,255,0.65);font-size:11px;margin-top:2px;}
+.tabs{display:flex;gap:4px;margin-top:10px;}
+.tab{flex:1;padding:6px 0;border-radius:8px 8px 0 0;border:none;cursor:pointer;font-size:11px;font-weight:700;background:rgba(255,255,255,0.15);color:#fff;}
+.tab.on{background:#fff;color:#2D5A3D;}
+
+/* ── pages ── */
+.page{display:none;padding:16px;max-width:600px;margin:0 auto;}
+.page.on{display:flex;flex-direction:column;gap:16px;}
+
+/* ── card ── */
+.card{background:#fff;border:1.5px solid #D6E4D6;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px;}
+.card-title{font-weight:700;color:#2D5A3D;font-size:14px;}
+
+/* ── form ── */
+label{display:block;font-size:11px;font-weight:600;color:#4A5E4D;margin-bottom:4px;}
+input[type=text],select,textarea{width:100%;padding:8px 10px;border:1.5px solid #D6E4D6;border-radius:8px;font-size:14px;color:#1A2E1E;background:#F7F9F7;font-family:inherit;}
+/* datetime-localはiOSで崩れるためtextで代替 */
+input.dt{width:100%;padding:8px 10px;border:1.5px solid #D6E4D6;border-radius:8px;font-size:14px;color:#1A2E1E;background:#F7F9F7;font-family:inherit;}
+textarea{resize:vertical;line-height:1.6;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+/* ── buttons ── */
+.btn-row{display:flex;gap:10px;}
+.btn{flex:1;padding:13px 16px;border-radius:10px;border:1.5px solid #2D5A3D;background:#fff;color:#2D5A3D;font-weight:700;font-size:14px;cursor:pointer;}
+.btn.p{background:#2D5A3D;color:#fff;border:none;}
+
+/* ── photo count ── */
+.cnt-row{display:flex;gap:8px;}
+.cbtn{flex:1;padding:10px 0;border-radius:10px;border:2px solid #D6E4D6;background:#F7F9F7;color:#4A5E4D;font-weight:700;font-size:15px;cursor:pointer;}
+.cbtn.on{border-color:#2D5A3D;background:#EAF2EB;color:#2D5A3D;}
+
+/* ── photo card ── */
+.pcard{border-radius:16px;padding:16px;background:#fff;display:flex;flex-direction:column;gap:12px;}
+
+/* ── label input ── */
+.li{display:flex;align-items:center;gap:8px;}
+.linput{flex:1;padding:7px 12px;border-radius:10px;font-size:15px;font-weight:700;outline:none;font-family:inherit;}
+.linput.c0{border:2px solid rgba(45,90,61,.35);color:#2D5A3D;background:#EAF2EB;}
+.linput.c1{border:2px solid rgba(212,134,10,.35);color:#D4860A;background:#FEF3DC;}
+.linput.cx{border:2px solid rgba(26,95,138,.35);color:#1A5F8A;background:#E8F3FB;}
+.lhint{font-size:11px;color:#8A9E8D;margin-top:-6px;}
+
+/* ── dual upload ── */
+.dual{display:flex;gap:10px;}
+.slot{flex:1;display:flex;flex-direction:column;gap:6px;}
+.slabel{display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700;}
+.sbox{width:100%;aspect-ratio:3/4;border-radius:10px;overflow:hidden;cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative;}
+.sbox.eg{background:#EAF2EB;border:2px dashed rgba(45,90,61,.5);}
+.sbox.ea{background:#FEF3DC;border:2px dashed rgba(212,134,10,.5);}
+.sbox img{width:100%;height:100%;object-fit:cover;display:block;}
+.sph{text-align:center;padding:8px;pointer-events:none;}
+.sph .ic{font-size:26px;}
+.sph .tx{font-size:10px;margin-top:4px;line-height:1.5;}
+.scl{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);border:none;border-radius:50%;width:24px;height:24px;color:#fff;font-size:14px;line-height:24px;text-align:center;cursor:pointer;padding:0;}
+
+/* ── crop modal ── */
+.cmodal{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:500;display:none;align-items:center;justify-content:center;padding:16px;}
+.cmodal.on{display:flex;}
+.cinner{background:#fff;border-radius:16px;padding:16px;width:100%;max-width:400px;display:flex;flex-direction:column;gap:12px;}
+.cinner h2{font-size:15px;font-weight:700;color:#2D5A3D;}
+.cinner small{font-size:12px;color:#4A5E4D;line-height:1.5;}
+#cc{width:100%;border-radius:10px;background:#1a1a1a;display:block;touch-action:none;}
+.srow{display:flex;align-items:center;gap:10px;}
+.srow input{flex:1;accent-color:#2D5A3D;}
+.spct{text-align:center;font-size:12px;color:#4A5E4D;font-weight:600;}
+.cbtns{display:flex;gap:8px;}
+.cbtns button{flex:1;padding:11px 0;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;}
+.ccancel{border:1.5px solid #D6E4D6;background:#F7F9F7;color:#4A5E4D;}
+.cok{border:none;background:#2D5A3D;color:#fff;}
+
+/* ── toast ── */
+#toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#2D5A3D;color:#fff;padding:10px 22px;border-radius:20px;font-weight:700;font-size:13px;z-index:999;display:none;text-align:center;max-width:85vw;line-height:1.5;}
+
+/* ── info tab ── */
+.icard{background:#fff;border:1.5px solid #D6E4D6;border-radius:16px;padding:16px;}
+.icard h3{font-weight:700;color:#2D5A3D;font-size:14px;margin-bottom:6px;}
+.icard p{font-size:13px;color:#4A5E4D;line-height:1.7;}
+
+/* ── @media print ── */
+@media print {
+  .hdr,.btn-row,.cnt-row,.lhint,.scl,#toast,.cmodal,#p0,#p2 { display:none !important; }
+  #p1 { display:block !important; padding:0 !important; max-width:100% !important; }
+  #p1 > .card { border:none !important; padding:0 !important; box-shadow:none !important; }
+  .card-title { display:none !important; }
+  #prevbox > div { width:210mm !important; height:297mm !important; aspect-ratio:unset !important; border:none !important; border-radius:0 !important; font-size:10pt !important; }
+  body { background:#fff !important; padding:0 !important; }
+  @page { size:A4; margin:0; }
+}
+
+/* ── print layout ── */
+#printout {
+  display:none;
+  width:100%;
+  min-height:277mm;
+  font-family:'Hiragino Kaku Gothic Pro','Meiryo',sans-serif;
+  font-size:10pt;
+  color:#1A2E1E;
+  flex-direction:column;
+}
+.p-hd{border-bottom:2pt solid #2D5A3D;padding-bottom:7px;margin-bottom:8px;}
+.p-ti{font-size:15pt;font-weight:800;color:#2D5A3D;margin-bottom:3px;}
+.p-mt{display:flex;gap:14px;font-size:8.5pt;color:#4A5E4D;flex-wrap:wrap;}
+.p-photos{flex:7;display:grid;gap:8px;overflow:hidden;}
+.p-card{display:flex;flex-direction:column;gap:4px;}
+.p-cl{font-weight:700;font-size:9pt;margin-bottom:3px;padding-bottom:2px;}
+.p-ir{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:4px;min-height:0;}
+.p-ic{display:flex;flex-direction:column;gap:2px;}
+.p-ib{flex:1;border:1px solid #D6E4D6;border-radius:3px;overflow:hidden;display:flex;align-items:center;justify-content:center;min-height:60px;}
+.p-ib img{width:100%;height:100%;object-fit:cover;display:block;}
+.p-is{font-size:7pt;color:#8A9E8D;text-align:center;}
+.p-inf{font-size:7.5pt;color:#4A5E4D;display:flex;flex-wrap:wrap;gap:2px 8px;line-height:1.4;}
+.p-mg{flex:3;border-top:1.5pt solid #D6E4D6;margin-top:8px;padding-top:7px;}
+.p-mgt{font-weight:700;color:#2D5A3D;font-size:9pt;margin-bottom:5px;}
+.p-mgb{border:1pt solid #D6E4D6;border-radius:3px;padding:7px;min-height:80px;font-size:9.5pt;line-height:1.6;white-space:pre-wrap;}
+.p-nt{font-size:7pt;color:#8A9E8D;text-align:right;margin-top:4px;}
+</style>
+</head>
+<body>
+
+<!-- ── header ── -->
+<div class="hdr">
+  <h1>🐾 症状記録シート</h1>
+  <p>獣医師への症状比較シートを作成</p>
+  <div class="tabs">
+    <button class="tab on" onclick="goTab(0)">✏️ 入力</button>
+    <button class="tab"    onclick="goTab(1)">🖨️ プレビュー</button>
+    <button class="tab"    onclick="goTab(2)">ℹ️ 使い方</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- ── 入力タブ ── -->
+<div id="p0" class="page on">
+  <div class="card">
+    <div class="card-title">🐾 ペット情報</div>
+    <div class="g2">
+      <div><label>ペットの名前</label><input id="f_name" type="text" placeholder="例：モモ"></div>
+      <div><label>種別</label><input id="f_species" type="text" placeholder="例：ウサギ"></div>
+      <div><label>品種</label><input id="f_breed" type="text" placeholder="例：ネザーランドドワーフ"></div>
+      <div><label>年齢</label><input id="f_age" type="text" placeholder="例：3歳"></div>
+    </div>
+    <div><label>飼主のお名前</label><input id="f_owner" type="text" placeholder="例：田中 花子"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📷 写真の組数</div>
+    <div class="cnt-row">
+      <button class="cbtn on" onclick="setN(2,this)">2組</button>
+      <button class="cbtn"    onclick="setN(4,this)">4組</button>
+      <button class="cbtn"    onclick="setN(6,this)">6組</button>
+    </div>
+    <p style="font-size:11px;color:#8A9E8D;line-height:1.5;">各組に「全体写真」＋「患部拡大」の2枚。1組目＝通常時、2組目＝症状時</p>
+  </div>
+
+  <div id="pcards"></div>
+
+  <div class="card">
+    <div class="card-title">💬 獣医師へのメッセージ</div>
+    <textarea id="f_vet" rows="6" placeholder="気になる症状、いつから始まったか、生活環境の変化など自由に書いてください。"></textarea>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn" onclick="goTab(1)">プレビュー確認</button>
+    <button class="btn p" onclick="doPrint()">🖨️ 印刷する</button>
+  </div>
+</div>
+
+<!-- ── プレビュータブ ── -->
+<div id="p1" class="page">
+  <div class="card">
+    <div class="card-title">印刷イメージ（A4縦）</div>
+    <div id="prevbox"></div>
+  </div>
+  <div class="btn-row">
+    <button class="btn" onclick="goTab(0)">← 編集に戻る</button>
+    <button class="btn p" onclick="doPrint()">🖨️ 印刷する</button>
+  </div>
+</div>
+
+<!-- ── 使い方タブ ── -->
+<div id="p2" class="page">
+  <div class="icard"><h3>📝 ペット情報を入力</h3><p>名前・種別・年齢など基本情報を入力。全て省略可能です。</p></div>
+  <div class="icard"><h3>🏷️ ラベルを自由に変更</h3><p>各写真カードの上部ラベル欄に入力。空欄なら「通常時」「症状時」がデフォルト表示されます。</p></div>
+  <div class="icard"><h3>🔍 全体＋拡大写真をアップロード</h3><p>各組に「全体写真」と「患部を拡大」の2枚を登録。拡大写真は選択後にトリミング・ズーム画面が開きます。</p></div>
+  <div class="icard"><h3>💬 獣医師へのメッセージ</h3><p>いつから症状が出たか、気になることを自由に書いてください。</p></div>
+  <div class="icard"><h3>🖨️ 印刷する</h3><p>「印刷する」ボタンを押すとSafariの印刷ダイアログが開きます。共有ボタン→「印刷」でも印刷できます。</p></div>
+  <div class="icard"><h3>📮 コンビニ印刷</h3><p>印刷ダイアログで「PDFとして保存」→ netprint.jp（セブン）またはPrintSmash（ローソン・ファミマ）にアップロード。</p></div>
+</div>
+
+<!-- ── 印刷用レイアウト（@media printで表示） ── -->
+<div id="printout"></div>
+
+<!-- ── トリミングモーダル ── -->
+<div id="cmodal" class="cmodal">
+  <div class="cinner">
+    <h2>🔍 患部を切り取り・拡大</h2>
+    <small>1本指でドラッグ移動 ／ 2本指ピンチまたはスライダーで拡大縮小</small>
+    <canvas id="cc" width="360" height="480"></canvas>
+    <div class="srow">
+      <span>🔭</span>
+      <input id="cslider" type="range" min="10" max="800" value="100">
+      <span>🔍</span>
+    </div>
+    <div class="spct" id="cpct">100%</div>
+    <div class="cbtns">
+      <button class="ccancel" onclick="closeCrop()">キャンセル</button>
+      <button class="cok" onclick="okCrop()">✓ この範囲で確定</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── 定数 ──
+var DLABELS   = ['通常時','症状時','参考①','参考②','参考③','参考④'];
+var DOTS      = ['🟢','🟡','🔵','🔵','🔵','🔵'];
+var APPETITE  = ['普通','やや低下','低下','ほぼなし','不明'];
+var EXCRETION = ['普通','下痢','軟便','便秘','嘔吐あり','血便','不明'];
+
+// ── 状態 ──
+var N = 2;
+var slots = [];
+for(var z = 0; z < 6; z++){
+  slots.push({wide:null, zoom:null, label:'', dt:'', memo:'', w:'', t:'', ap:'', ex:''});
+}
+
+// ── タブ切替 ──
+function goTab(n){
+  document.querySelectorAll('.page').forEach(function(el){ el.classList.remove('on'); });
+  document.querySelectorAll('.tab').forEach(function(el){ el.classList.remove('on'); });
+  document.getElementById('p'+n).classList.add('on');
+  document.querySelectorAll('.tab')[n].classList.add('on');
+  if(n === 1){ buildPreview(); }
+}
+
+// ── 組数変更 ──
+function setN(n, btn){
+  N = n;
+  document.querySelectorAll('.cbtn').forEach(function(b){ b.classList.remove('on'); });
+  btn.classList.add('on');
+  buildCards();
+}
+
+// ── トースト ──
+function showToast(msg){
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.display = 'block';
+  setTimeout(function(){ el.style.display = 'none'; }, 3500);
+}
+
+// ── 写真カード構築 ──
+function buildCards(){
+  var wrap = document.getElementById('pcards');
+  wrap.innerHTML = '';
+  for(var i = 0; i < N; i++){
+    wrap.appendChild(buildCard(i));
+  }
+}
+
+function buildCard(i){
+  var s  = slots[i];
+  var cc = i===0 ? 'c0' : i===1 ? 'c1' : 'cx';
+  var bc = i===0 ? 'rgba(45,90,61,.2)' : i===1 ? 'rgba(212,134,10,.2)' : 'rgba(26,95,138,.2)';
+
+  var div = document.createElement('div');
+  div.className = 'pcard';
+  div.style.border = '2px solid ' + bc;
+
+  // ラベル行
+  var li  = document.createElement('div');  li.className = 'li';
+  var dot = document.createElement('span'); dot.style.fontSize = '16px'; dot.textContent = DOTS[i];
+  var lin = document.createElement('input');
+  lin.type = 'text'; lin.className = 'linput ' + cc;
+  lin.placeholder = DLABELS[i]; lin.value = s.label;
+  (function(idx){ lin.addEventListener('input', function(){ slots[idx].label = this.value; }); })(i);
+  li.appendChild(dot); li.appendChild(lin);
+  div.appendChild(li);
+
+  var hint = document.createElement('p');
+  hint.className = 'lhint';
+  hint.textContent = '↑ ラベルを自由に変更できます（例：' + DLABELS[i] + '）';
+  div.appendChild(hint);
+
+  // デュアルアップロード
+  var dual = document.createElement('div'); dual.className = 'dual';
+  dual.appendChild(buildSlot(i, 'wide'));
+  dual.appendChild(buildSlot(i, 'zoom'));
+  div.appendChild(dual);
+
+  // 撮影日時（textで受け取りUIの崩れを防ぐ）
+  div.appendChild(makeField('撮影日時', makeTextInput(i, 'dt', s.dt, '例：2024-01-15 14:30')));
+
+  // ひとことメモ
+  div.appendChild(makeField('ひとことメモ', makeTextInput(i, 'memo', s.memo, '例：元気に走り回っていた')));
+
+  // 体重・体温
+  var g2 = document.createElement('div'); g2.className = 'g2';
+  g2.appendChild(makeField('体重', makeTextInput(i, 'w', s.w, '例：3.2kg')));
+  g2.appendChild(makeField('体温 (℃)', makeTextInput(i, 't', s.t, '例：38.5')));
+  div.appendChild(g2);
+
+  // 食欲
+  div.appendChild(makeField('食欲', makeSelect(i, 'ap', APPETITE, s.ap)));
+
+  // 排泄・消化
+  div.appendChild(makeField('排泄・消化', makeSelect(i, 'ex', EXCRETION, s.ex)));
+
+  return div;
+}
+
+function makeField(labelText, inputEl){
+  var d = document.createElement('div');
+  var l = document.createElement('label'); l.textContent = labelText;
+  d.appendChild(l); d.appendChild(inputEl);
+  return d;
+}
+
+function makeTextInput(i, key, val, ph){
+  var inp = document.createElement('input');
+  inp.type = 'text'; inp.placeholder = ph; inp.value = val || '';
+  (function(idx, k){ inp.addEventListener('input', function(){ slots[idx][k] = this.value; }); })(i, key);
+  return inp;
+}
+
+function makeSelect(i, key, opts, val){
+  var sel = document.createElement('select');
+  var op0 = document.createElement('option'); op0.value = ''; op0.textContent = '選択';
+  sel.appendChild(op0);
+  opts.forEach(function(o){
+    var op = document.createElement('option'); op.textContent = o;
+    if(o === val){ op.selected = true; }
+    sel.appendChild(op);
+  });
+  (function(idx, k){ sel.addEventListener('change', function(){ slots[idx][k] = this.value; }); })(i, key);
+  return sel;
+}
+
+// ── スロット構築 ──
+var cropCB = null;
+
+function buildSlot(i, type){
+  var s      = slots[i];
+  var isWide = type === 'wide';
+  var label  = isWide ? '全体写真' : '患部を拡大';
+  var icon   = isWide ? '📷' : '🔍';
+  var color  = isWide ? '#2D5A3D' : '#D4860A';
+  var url    = s[type];
+
+  var wrap = document.createElement('div');
+  wrap.className = 'slot';
+  wrap.setAttribute('data-i', i);
+  wrap.setAttribute('data-t', type);
+
+  // スロットラベル
+  var slabel = document.createElement('div');
+  slabel.className = 'slabel'; slabel.style.color = color;
+  slabel.innerHTML = '<span style="font-size:13px">' + icon + '</span><span>' + label + '</span>';
+  wrap.appendChild(slabel);
+
+  // 写真ボックス
+  var box = document.createElement('div');
+  box.className = 'sbox ' + (url ? '' : (isWide ? 'eg' : 'ea'));
+
+  if(url){
+    var img = document.createElement('img'); img.src = url;
+    box.appendChild(img);
+    var clr = document.createElement('button'); clr.className = 'scl'; clr.textContent = '×';
+    (function(idx, tp){
+      clr.addEventListener('click', function(e){
+        e.stopPropagation();
+        slots[idx][tp] = null;
+        // スロットのみ再描画（カード全体は再描画しない）
+        var oldSlot = document.querySelector('.slot[data-i="' + idx + '"][data-t="' + tp + '"]');
+        if(oldSlot){ oldSlot.parentNode.replaceChild(buildSlot(idx, tp), oldSlot); }
+      });
+    })(i, type);
+    box.appendChild(clr);
+  } else {
+    var ph = document.createElement('div'); ph.className = 'sph'; ph.style.color = color;
+    ph.innerHTML = '<div class="ic">🐾</div><div class="tx">タップして<br>選択</div>';
+    box.appendChild(ph);
+  }
+
+  // ファイル入力
+  var fi = document.createElement('input');
+  fi.type = 'file'; fi.accept = 'image/*'; fi.style.display = 'none';
+  (function(idx, tp){
+    fi.addEventListener('change', function(e){
+      var file = e.target.files[0];
+      if(!file){ return; }
+      var r = new FileReader();
+      r.onload = function(ev){
+        if(tp === 'wide'){
+          slots[idx].wide = ev.target.result;
+          // スロットのみ再描画
+          var oldSlot = document.querySelector('.slot[data-i="' + idx + '"][data-t="wide"]');
+          if(oldSlot){ oldSlot.parentNode.replaceChild(buildSlot(idx, 'wide'), oldSlot); }
+        } else {
+          openCrop(ev.target.result, function(dataURL){
+            slots[idx].zoom = dataURL;
+            // スロットのみ再描画
+            var oldSlot = document.querySelector('.slot[data-i="' + idx + '"][data-t="zoom"]');
+            if(oldSlot){ oldSlot.parentNode.replaceChild(buildSlot(idx, 'zoom'), oldSlot); }
+          });
+        }
+      };
+      r.readAsDataURL(file);
+      fi.value = '';
+    });
+  })(i, type);
+
+  box.addEventListener('click', function(){ fi.click(); });
+  wrap.appendChild(box);
+  wrap.appendChild(fi);
+  return wrap;
+}
+
+// ── トリミング ──
+var CW = 360, CH = 480;
+var cs = {scale:1, ox:0, oy:0, img:null, t1:null, t2:null, iD:0, iS:1};
+
+function openCrop(src, cb){
+  cropCB = cb;
+  document.getElementById('cmodal').classList.add('on');
+  var img = new Image();
+  img.onload = function(){
+    cs.img = img;
+    var fit = Math.min(CW / img.naturalWidth, CH / img.naturalHeight);
+    cs.scale = fit; cs.ox = 0; cs.oy = 0;
+    document.getElementById('cslider').value = Math.round(fit * 100);
+    document.getElementById('cpct').textContent = Math.round(fit * 100) + '%';
+    cropDraw();
+  };
+  img.src = src;
+}
+
+function closeCrop(){
+  document.getElementById('cmodal').classList.remove('on');
+  cropCB = null;
+}
+
+function okCrop(){
+  var dataURL = document.getElementById('cc').toDataURL('image/jpeg', 0.92);
+  document.getElementById('cmodal').classList.remove('on');
+  if(cropCB){ cropCB(dataURL); cropCB = null; }
+}
+
+function cropDraw(){
+  var cv = document.getElementById('cc');
+  if(!cv || !cs.img){ return; }
+  var ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, CW, CH);
+  ctx.save();
+  ctx.translate(CW/2 + cs.ox, CH/2 + cs.oy);
+  ctx.scale(cs.scale, cs.scale);
+  ctx.drawImage(cs.img, -cs.img.naturalWidth/2, -cs.img.naturalHeight/2);
+  ctx.restore();
+}
+
+// トリミングのタッチ・マウス操作
+var cvEl = document.getElementById('cc');
+var dist = function(a,b){ return Math.hypot(b.clientX-a.clientX, b.clientY-a.clientY); };
+var midP = function(a,b){ return {x:(a.clientX+b.clientX)/2, y:(a.clientY+b.clientY)/2}; };
+
+cvEl.addEventListener('touchstart', function(e){
+  e.preventDefault();
+  var ts = e.touches;
+  if(ts.length === 1){
+    cs.t1 = {clientX:ts[0].clientX, clientY:ts[0].clientY}; cs.t2 = null;
+  } else if(ts.length === 2){
+    cs.t1 = {clientX:ts[0].clientX, clientY:ts[0].clientY};
+    cs.t2 = {clientX:ts[1].clientX, clientY:ts[1].clientY};
+    cs.iD = dist(cs.t1, cs.t2); cs.iS = cs.scale;
+  }
+}, {passive:false});
+
+cvEl.addEventListener('touchmove', function(e){
+  e.preventDefault();
+  var ts = e.touches;
+  if(ts.length === 1 && cs.t1 && !cs.t2){
+    cs.ox += ts[0].clientX - cs.t1.clientX;
+    cs.oy += ts[0].clientY - cs.t1.clientY;
+    cs.t1 = {clientX:ts[0].clientX, clientY:ts[0].clientY};
+    cropDraw();
+  } else if(ts.length === 2 && cs.t2){
+    var c1 = {clientX:ts[0].clientX, clientY:ts[0].clientY};
+    var c2 = {clientX:ts[1].clientX, clientY:ts[1].clientY};
+    var ns = Math.max(0.1, Math.min(10, cs.iS * (dist(c1,c2) / cs.iD)));
+    var pm = midP(cs.t1, cs.t2), cm = midP(c1, c2);
+    cs.ox += cm.x - pm.x; cs.oy += cm.y - pm.y;
+    cs.scale = ns; cs.t1 = c1; cs.t2 = c2;
+    document.getElementById('cslider').value = Math.round(ns * 100);
+    document.getElementById('cpct').textContent = Math.round(ns * 100) + '%';
+    cropDraw();
+  }
+}, {passive:false});
+
+cvEl.addEventListener('touchend', function(e){
+  e.preventDefault();
+  var ts = e.touches;
+  if(ts.length === 0){ cs.t1 = null; cs.t2 = null; }
+  else if(ts.length === 1){ cs.t1 = {clientX:ts[0].clientX, clientY:ts[0].clientY}; cs.t2 = null; }
+}, {passive:false});
+
+document.getElementById('cslider').addEventListener('input', function(){
+  cs.scale = parseFloat(this.value) / 100;
+  document.getElementById('cpct').textContent = this.value + '%';
+  cropDraw();
+});
+
+// ── プレビュー ──
+function buildPreview(){
+  var box  = document.getElementById('prevbox');
+  var cols = N<=2 ? 1 : N===4 ? 2 : 3;
+  var pn=fv('f_name'), sp=fv('f_species'), br=fv('f_breed'), ag=fv('f_age'), ow=fv('f_owner');
+  var meta = [pn&&'名前:<b>'+pn+'</b>', sp&&'種別:<b>'+sp+'</b>', br&&'品種:<b>'+br+'</b>', ag&&'年齢:<b>'+ag+'</b>', ow&&'飼主:<b>'+ow+'</b>'].filter(Boolean).join(' ');
+
+  var cardsH = slots.slice(0,N).map(function(p,i){
+    var col = i===0?'#2D5A3D':i===1?'#D4860A':'#1A5F8A';
+    var lbl = p.label || DLABELS[i];
+    var imgs = ['wide','zoom'].map(function(t,si){
+      var bg = si===0 ? '#EAF2EB' : '#FEF3DC';
+      var lb = si===0 ? '全体' : '拡大';
+      return '<div style="display:flex;flex-direction:column;gap:4%;overflow:hidden;">'
+        + '<div style="flex:1;background:'+(p[t]?'transparent':bg)+';border:1px solid #D6E4D6;border-radius:3px;display:flex;align-items:center;justify-content:center;overflow:hidden;min-height:0;">'
+        + (p[t] ? '<img src="'+p[t]+'" style="width:100%;height:100%;object-fit:cover;">' : '<span style="color:#8A9E8D;font-size:0.7em;">'+lb+'</span>')
+        + '</div><div style="font-size:0.7em;color:#4A5E4D;text-align:center;">'+lb+'</div></div>';
+    }).join('');
+    var info = [p.dt, p.memo, p.w&&'体重:'+p.w, p.t&&'体温:'+p.t+'℃', p.ap&&'食欲:'+p.ap, p.ex&&'排泄:'+p.ex].filter(Boolean).join(' / ');
+    return '<div style="display:flex;flex-direction:column;gap:2%;overflow:hidden;">'
+      + '<div style="font-weight:700;font-size:0.95em;color:'+col+';border-bottom:1px solid '+col+'44;padding-bottom:1%;">'+lbl+'</div>'
+      + '<div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:4%;overflow:hidden;">'+imgs+'</div>'
+      + '<div style="font-size:0.72em;color:#4A5E4D;line-height:1.3;">'+info+'</div>'
+      + '</div>';
+  }).join('');
+
+  box.innerHTML = '<div style="background:#fff;width:100%;aspect-ratio:210/297;border:1px solid #D6E4D6;border-radius:8px;padding:3.5% 4%;box-sizing:border-box;display:flex;flex-direction:column;font-size:clamp(5px,1.6vw,10px);">'
+    + '<div style="border-bottom:2px solid #2D5A3D;padding-bottom:1.5%;margin-bottom:1.5%;">'
+    + '<div style="font-weight:800;font-size:1.5em;color:#2D5A3D;">🐾 症状記録シート</div>'
+    + '<div style="display:flex;gap:3%;flex-wrap:wrap;font-size:0.9em;color:#4A5E4D;margin-top:0.5%;">'+meta+'</div></div>'
+    + '<div style="flex:7;overflow:hidden;"><div style="display:grid;grid-template-columns:repeat('+cols+',1fr);gap:2%;height:100%;">'+cardsH+'</div></div>'
+    + '<div style="flex:3;border-top:1.5px solid #D6E4D6;margin-top:1.5%;padding-top:1.5%;">'
+    + '<div style="font-weight:700;color:#2D5A3D;font-size:0.9em;margin-bottom:1%;">獣医師へのメッセージ</div>'
+    + '<div style="border:1px solid #D6E4D6;border-radius:3px;padding:2%;height:75%;font-size:0.85em;white-space:pre-wrap;line-height:1.5;overflow:hidden;">'+fv('f_vet')+'</div>'
+    + '</div></div>';
+}
+
+// ── 印刷 ──
+function doPrint(){
+  var cols = N<=2 ? 1 : N===4 ? 2 : 3;
+  var pn=fv('f_name'), sp=fv('f_species'), br=fv('f_breed'), ag=fv('f_age'), ow=fv('f_owner'), vm=fv('f_vet');
+  var meta = [pn&&'<span>名前:<b>'+pn+'</b></span>', sp&&'<span>種別:<b>'+sp+'</b></span>', br&&'<span>品種:<b>'+br+'</b></span>', ag&&'<span>年齢:<b>'+ag+'</b></span>', ow&&'<span>飼主:<b>'+ow+'</b></span>'].filter(Boolean).join(' ');
+
+  var cardsH = slots.slice(0,N).map(function(p,i){
+    var col = i===0?'#2D5A3D':i===1?'#D4860A':'#1A5F8A';
+    var lbl = p.label || DLABELS[i];
+    var mk = function(url,lb,bg){
+      return url
+        ? '<div class="p-ib"><img src="'+url+'"></div>'
+        : '<div class="p-ib" style="background:'+bg+'"><span style="color:#8A9E8D;font-size:7pt;">'+lb+'</span></div>';
+    };
+    var info = [p.dt, p.memo, p.w&&'体重:'+p.w, p.t&&'体温:'+p.t+'℃', p.ap&&'食欲:'+p.ap, p.ex&&'排泄:'+p.ex].filter(Boolean).map(function(v){ return '<span>'+v+'</span>'; }).join('');
+    return '<div class="p-card">'
+      + '<div class="p-cl" style="color:'+col+';border-bottom:1px solid '+col+'44;">'+lbl+'</div>'
+      + '<div class="p-ir">'
+      + '<div class="p-ic">'+mk(p.wide,'全体','#EAF2EB')+'<div class="p-is">全体</div></div>'
+      + '<div class="p-ic">'+mk(p.zoom,'拡大','#FEF3DC')+'<div class="p-is">拡大</div></div>'
+      + '</div>'
+      + '<div class="p-inf">'+info+'</div>'
+      + '</div>';
+  }).join('');
+
+  // 印刷用レイアウトをDOMに書き込む
+  var out = document.getElementById('printout');
+  out.innerHTML = '<div class="p-hd"><div class="p-ti">🐾 症状記録シート</div><div class="p-mt">'+meta+'</div></div>'
+    + '<div class="p-photos" style="grid-template-columns:repeat('+cols+',1fr);">'+cardsH+'</div>'
+    + '<div class="p-mg"><div class="p-mgt">獣医師へのメッセージ</div><div class="p-mgb">'+vm+'</div><div class="p-nt">※ ペット症状記録アプリで作成</div></div>';
+
+  // プレビュータブに切り替えて印刷案内を表示
+  goTab(1);
+  showToast('Safari の共有ボタン → 「印刷」を押してください');
+}
+
+// ── ヘルパー ──
+function fv(id){ var e = document.getElementById(id); return e ? e.value : ''; }
+
+// ── 初期化 ──
+buildCards();
+</script>
+</body>
+</html>
